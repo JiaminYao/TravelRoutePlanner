@@ -46,7 +46,6 @@ unordered_map<string, cv::Point> loadCityCoordinates(const string& filename) {
         ss >> x;
         ss.ignore(1, ','); // Skip the comma
         ss >> y;
-
         // Store the data in the unordered_map
         cityCoordinates[city] = cv::Point(x, y);
     }
@@ -165,7 +164,7 @@ vector<CityVisit> travelGreedy(const vector<string>& cities_to_visit, vector<Rou
     string current_city = cities_to_visit[0];
     visited[current_city] = true;
     CityVisit c;
-    c.city = current_city, c.cost = 0, c.time = 0;
+    c.city = current_city, c.cost = 0, c.time = 0, c.point = citycoordinates[current_city];
     travel_sequence.push_back(c);
 
     for (size_t i = 1; i < cities_to_visit.size(); ++i) {
@@ -189,7 +188,7 @@ void printTravelSequence(const vector<CityVisit>& sequence) {
     double total_cost = 0, total_time = 0;
     cout << "Travel Sequence:" << endl;
     for (const auto& step : sequence) {
-        cout << "City: " << step.city << ", Cost: " << step.cost << ", Time: " << step.time << endl;
+        cout << "City: " << step.city << ", Cost: " << step.cost << ", Time: " << step.time << step.point <<endl;
         total_cost += step.cost;
         total_time += step.time;
     }
@@ -220,8 +219,15 @@ void printTravelSequence(const vector<CityVisit>& sequence) {
 }
  */
 // Function to draw Initial Path without order (plot cities, draw paths, and annotate them with their index)
-void drawInitialPath(cv::Mat& img, const vector<cv::Point>& city_list)
+void drawInitialPath(cv::Mat& img, unordered_map<string, cv::Point> cityCoordinates)
 {
+
+    vector<cv::Point> city_list;
+    for (const auto& city : cityCoordinates) {
+        city_list.push_back(city.second); // Only push back the coordinates (cv::Point)
+        cout << 7 << endl;
+    }
+
     // Plot the cities, draw paths, and annotate with index
     for (size_t i = 0; i < city_list.size(); i++)
     {
@@ -245,29 +251,29 @@ void drawInitialPath(cv::Mat& img, const vector<cv::Point>& city_list)
     }
 }
 
-void drawShortestGreedyPath(cv::Mat& img, const vector<cv::Point>& city_list, const vector<int>& path)
+void drawShortestGreedyPath(cv::Mat& img, const vector<CityVisit> visitListR)
 {
+    
     // Plot the cities and annotate them with their new greedy index
-    for (size_t i = 0; i < path.size(); i++)
+    for (size_t i = 0; i < visitListR.size(); i++)
     {
-        int greedy_index = path[i];
         // Plot city as a red circle
-        cv::circle(img, city_list[greedy_index], 10, cv::Scalar(0, 0, 255), -1);
+        cv::circle(img, visitListR[i].point, 10, cv::Scalar(0, 0, 255), -1);
 
         // Annotate the city with its new greedy index
-        cv::putText(img, to_string(i), city_list[greedy_index], cv::FONT_HERSHEY_SIMPLEX, 1.5, cv::Scalar(0, 0, 0), 6);
+        cv::putText(img, to_string(i), visitListR[i].point, cv::FONT_HERSHEY_SIMPLEX, 1.5, cv::Scalar(0, 0, 0), 6);
     }
 
     // Draw the greedy path with green lines based on the calculated path
-    for (size_t i = 0; i < path.size() - 1; i++)
+    for (size_t i = 0; i < visitListR.size() - 1; i++)
     {
-        cv::line(img, city_list[path[i]], city_list[path[i + 1]], cv::Scalar(30, 150, 80), 4);
+        cv::line(img, visitListR[i].point, visitListR[i+1].point, cv::Scalar(30, 150, 80), 4);
     }
 
     // Close the greedy path (draw line from last city to first city in path)
-    if (!path.empty())
+    if (!visitListR.empty())
     {
-        cv::line(img, city_list[path[path.size() - 1]], city_list[path[0]], cv::Scalar(30, 150, 80), 4);
+        cv::line(img, visitListR[visitListR.size() - 1].point, visitListR[0].point, cv::Scalar(30, 150, 80), 4);
     }
 }
 
@@ -296,20 +302,17 @@ int main() {
         cerr << "Error: Unable to load image." << endl;
         return -1;
     }
-    cout << 7999999999 << endl;
-    vector<cv::Point> coordinates;
-    for (const auto& city : cityCoordinates) {
-        coordinates.push_back(city.second); // Only push back the coordinates (cv::Point)
-        cout << 7 << endl;
-    }
+
     
 
     // Assuming drawInitialPath is defined and takes an image and a vector of Points
-    drawInitialPath(img_initial, coordinates);
+    drawInitialPath(img_initial, cityCoordinates);
 
     // Run greedy algorithm for regular roads
     visitListR = travelGreedy(cities, drivingInfo, cityCoordinates, false);
     printTravelSequence(visitListR);
+
+    drawShortestGreedyPath(img_greedy, visitListR);
 
     // Greedy solution for both regular and highway
     //greedyPath(cities, roads, false, greedyPathReg);
@@ -325,14 +328,16 @@ int main() {
 
     // Output Results (greedy, DP, DC paths for regular and highway as required)
     string initial_path_file = "Image/E2Initial_Path.png";
-    string shortest_greedy_path_file = "./Image/E2Shortest_Greedy_Path.png";
+    string shortest_greedy_path_file = "Image/E2Shortest_Greedy_Path.png";
     string shortest_dc_path_file = "./Image/E2hortest_DC_Path.png";
     string shortest_dp_path_file = "./Image/E2Shortest_DP_Path.png";
 
     cv::imwrite(initial_path_file, img_initial);
-
     cout << "Initial path saved to " << initial_path_file << endl;
 
+    cv::imwrite(shortest_greedy_path_file, img_greedy);
+    cout << "Shortest path (greedy) saved to " << shortest_greedy_path_file << endl;
+    
 
      // Open the saved images using the system's default image viewer
 #ifdef _WIN32
