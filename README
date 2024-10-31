@@ -18,7 +18,7 @@ brew install opencv
 pkg-config --modversion opencv4
 
 # Compile the C++ program using g++ and OpenCV libraries
-g++ -std=c++11 -o E1 E1.cpp `pkg-config --cflags --libs opencv4`
+g++ -std=c++17 -o E1 E1.cpp `pkg-config --cflags --libs opencv4`
 
 # Run the compiled program
 ./E1

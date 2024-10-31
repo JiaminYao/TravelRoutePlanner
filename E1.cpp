@@ -61,27 +61,26 @@ vector<City> loadCityCoordinates(const string& coor_file)
 
 
 // Function to write city names and their order based on the calculated path to a CSV file
-void writeCityOrderToCSV(const string& file_name, const vector<City>& city_list, const vector<int>& path)
+void writeCityOrderToCSV(const string& filename, const vector<City>& city_list, const vector<int>& path)
 {
-    ofstream outfile(file_name);
-    if (!outfile.is_open())
-    {
-        cerr << "Error: Could not open the file " << file_name << " for writing." << endl;
-        return;
-    }
+    ofstream outfile(filename);
+    if (outfile.is_open()) {
 
     // Write header
-    outfile << "Index,City Name,Coordinate (x,y)\n";
+    outfile << "Index,City Name,Coordinate (x,y)" << endl;
 
     // Write city information based on the path
-    for (size_t i = 0; i < path.size(); i++)
+    for (size_t new_index = 0; new_index < path.size(); ++new_index)
     {
-        int idx = path[i];
-        outfile << i << "," << city_list[idx].name << ",(" << city_list[idx].point.x << "," << city_list[idx].point.y << ")\n";
+        int original_index = path[new_index];
+        outfile << new_index << "," << city_list[original_index].name 
+                << ",(" << city_list[original_index].point.x 
+                << "," << city_list[original_index].point.y << ")" << endl;
     }
-
     outfile.close();
-    cout << "City order saved to " << file_name << endl;
+    } else {
+        cerr << "Error: Could not open file " << filename << " for writing." << endl;
+    }
 }
 
 // Function to calculate the distance between two points
@@ -118,7 +117,7 @@ void drawInitialPath(cv::Mat& img, const vector<cv::Point>& city_list)
 }
 
 
-// Greedy algorithm to find the shortest path based on distance and return the path indices
+// Function to implement Greedy algorithm to find the shortest path
 vector<int> shortestGreedyPath(const vector<cv::Point>& city_list)
 {
     int n = city_list.size();
@@ -158,34 +157,34 @@ vector<int> shortestGreedyPath(const vector<cv::Point>& city_list)
 }
 
 // Function to draw the Shortest Path using Greedy Algorithm (plot cities, draw paths, and annotate them with their greedy index)
-void drawShortestGreedyPath(cv::Mat& img, const vector<cv::Point>& city_list, const vector<int>& path)
+void drawShortestGreedyPath(cv::Mat& img, const vector<cv::Point>& city_coords, const vector<int>& path)
 {
     // Plot the cities and annotate them with their new greedy index
     for (size_t i = 0; i < path.size(); i++)
     {
         int greedy_index = path[i];
         // Plot city as a red circle
-        cv::circle(img, city_list[greedy_index], 10, cv::Scalar(0, 0, 255), -1);
+        cv::circle(img, city_coords[greedy_index], 10, cv::Scalar(0, 0, 255), -1);
 
         // Annotate the city with its new greedy index
-        cv::putText(img, to_string(i), city_list[greedy_index], cv::FONT_HERSHEY_SIMPLEX, 1.5, cv::Scalar(0, 0, 0), 6);
+        cv::putText(img, to_string(i), city_coords[greedy_index], cv::FONT_HERSHEY_SIMPLEX, 1.5, cv::Scalar(0, 0, 0), 6);
     }
 
     // Draw the greedy path with green lines based on the calculated path
     for (size_t i = 0; i < path.size() - 1; i++)
     {
-        cv::line(img, city_list[path[i]], city_list[path[i + 1]], cv::Scalar(30, 150, 80), 4);
+        cv::line(img, city_coords[path[i]], city_coords[path[i + 1]], cv::Scalar(30, 150, 80), 4);
     }
 
     // Close the greedy path (draw line from last city to first city in path)
     if (!path.empty())
     {
-        cv::line(img, city_list[path[path.size() - 1]], city_list[path[0]], cv::Scalar(30, 150, 80), 4);
+        cv::line(img, city_coords[path[path.size() - 1]], city_coords[path[0]], cv::Scalar(30, 150, 80), 4);
     }
 }
 
 
-// Function to implement the Divide-and-Conquer algorithm to find the closest pair
+// Function to implement the Divide-and-Conquer algorithm to find the shortest pairs
 pair<int, int> divideAndConquer(vector<City>& cities, int left, int right, double& min_dist)
 {
     // Base case: If there are 3 or fewer cities, use brute-force
@@ -212,7 +211,7 @@ pair<int, int> divideAndConquer(vector<City>& cities, int left, int right, doubl
     return best_pair;
 }
 
-// Function to implement the Divide-and-Conquer strategy to find the shortest path and return the path indices
+// Function to implement the Divide-and-Conquer algorithm to find the shortest path
 vector<int> shortestDCPath(const vector<cv::Point>& city_list)
 {
     // Convert cv::Point to City struct for DC algorithm
@@ -265,7 +264,7 @@ vector<int> shortestDCPath(const vector<cv::Point>& city_list)
 }
 
 
-// Function to draw the Shortest Path using Divide-and-Conquer and save as an image
+// Function to draw the Shortest Path using Divide-and-Conquer Algorithm
 void drawShortestDCPath(cv::Mat& img, const vector<cv::Point>& city_list, const vector<int>& dc_path)
 {
     // Plot the cities and annotate them with their index
@@ -292,7 +291,7 @@ void drawShortestDCPath(cv::Mat& img, const vector<cv::Point>& city_list, const 
     }
 }
 
-// Function to compute shortest path using Dynamic Programming (TSP)
+// Function to implement the Dynamic Programming algorithm to find the shortest path
 vector<int> shortestDPPath(const vector<cv::Point>& city_list)
 {
     int n = city_list.size();
@@ -374,7 +373,7 @@ vector<int> shortestDPPath(const vector<cv::Point>& city_list)
 }
 
 
-// Function to draw the Shortest Path using Dynamic Programming (TSP)
+// Function to draw the Shortest Path using Dynamic Programming Algorithm
 void drawShortestDPPath(cv::Mat& img, const vector<cv::Point>& city_list, const vector<int>& dp_path)
 {
     // Plot the cities and annotate them with their index
@@ -424,9 +423,11 @@ int main()
 {
     // Load the city coordinates from CSV file
     string coor_file = "./Dataset/Dataset_Coordinate.csv";
-    vector<City> city_list = loadCityCoordinates(coor_file);
-    if (city_list.empty()) return -1;  // Exit if failed to load city coordinates
-
+    vector<City> city_coords = loadCityCoordinates(coor_file);
+    if (city_coords.empty()) {
+        cerr << "Error: City coordinates file is empty or not loaded." << endl;
+        return -1;
+    }
     // Load the image (replace with your image path)
     string image_file = "./Image/Europe.png";
     cv::Mat img_initial = cv::imread(image_file);  // For initial path
@@ -440,79 +441,57 @@ int main()
         return -1;
     }
 
-    // 1. Draw the initial path on img_initial
     vector<cv::Point> city_coordinates;
-    for (const auto& city : city_list) {
+    for (const auto& city : city_coords) {
         city_coordinates.push_back(city.point);
     }
+
+    // 1. Initial path
     drawInitialPath(img_initial, city_coordinates);
 
     // 2. Apply the greedy algorithm to find the shortest path
     vector<int> shortest_greedy_index = shortestGreedyPath(city_coordinates);
-
-    // 2. Draw the greedy path on img_greedy and plot cities with their greedy index
     drawShortestGreedyPath(img_greedy, city_coordinates, shortest_greedy_index);
-
-    // 2. Calculate and print the total distance for the greedy path
     double greedy_total_distance = calculateTotalDistance(city_coordinates, shortest_greedy_index);
-    cout << "Total distance (Greedy): " << greedy_total_distance << " units" << endl;
+    cout << "Total distance (Greedy): " << greedy_total_distance << " units" << " = " << greedy_total_distance*0.9 << " km" << endl;
 
     // 3. Apply the divide-and-conquer algorithm to find the shortest path
     vector<int> shortest_dc_index = shortestDCPath(city_coordinates);
-
-    // 3. Draw the divide-and-conquer path on img_dc and plot cities with their index
     drawShortestDCPath(img_dc, city_coordinates, shortest_dc_index);
-
-    // 3. Calculate and print the total distance for the divide-and-conquer path
     double dc_total_distance = calculateTotalDistance(city_coordinates, shortest_dc_index);
-    cout << "Total distance (Divide-and-Conquer): " << dc_total_distance << " units" << endl;
+    cout << "Total distance (Divide-and-Conquer): " << dc_total_distance << " units" << " = " << dc_total_distance*0.9 << " km" << endl;
 
     // 4. Apply the dynamic programming algorithm to find the shortest path
     vector<int> shortest_dp_index = shortestDPPath(city_coordinates);
-
-    // 4. Draw the dynamic programming path on img_dp and plot cities with their DP index
     drawShortestDPPath(img_dp, city_coordinates, shortest_dp_index);
-
-    // 4. Calculate and print the total distance for the dynamic programming path
     double dp_total_distance = calculateTotalDistance(city_coordinates, shortest_dp_index);
-    cout << "Total distance (Dynamic Programming): " << dp_total_distance << " units" << endl;
+    cout << "Total distance (Dynamic Programming): " << dp_total_distance << " units" << " = " << dp_total_distance*0.9 << " km" << endl;
 
-    string initial_path_file = "./Image/Initial_Path.png";
-    string shortest_greedy_path_file = "./Image/Shortest_Greedy_Path.png";
-    string shortest_dc_path_file = "./Image/Shortest_DC_Path.png";
-    string shortest_dp_path_file = "./Image/Shortest_DP_Path.png";
+    cv::imwrite("./Image/Initial_Path.png", img_initial);
+    cv::imwrite("./Image/Shortest_Greedy_Path.png", img_greedy);
+    cv::imwrite("./Image/Shortest_DC_Path.png", img_dc);
+    cv::imwrite("./Image/Shortest_DP_Path.png", img_dp);
 
-    cv::imwrite(initial_path_file, img_initial);
-    cv::imwrite(shortest_greedy_path_file, img_greedy);
-    cv::imwrite(shortest_dc_path_file, img_dc);
-    cv::imwrite(shortest_dp_path_file, img_dp);
-
-    cout << "Initial path saved to " << initial_path_file << endl;
-    cout << "Shortest path (greedy) saved to " << shortest_greedy_path_file << endl;
-    cout << "Shortest path (divide-and-conquer) saved to " << shortest_dc_path_file << endl;
-    cout << "Shortest path (dynamic programming) saved to " << shortest_dp_path_file << endl;
-
-    // Write the city order for each path to CSV
-    writeCityOrderToCSV("./Table/Shortest_Greedy_Order.csv", city_list, shortest_greedy_index);
-    writeCityOrderToCSV("./Table/Shortest_DC_Order.csv", city_list, shortest_dc_index);
-    writeCityOrderToCSV("./Table/Shortest_DP_Order.csv", city_list, shortest_dp_index);
+    writeCityOrderToCSV("./Table/Shortest_Greedy_Order.csv", city_coords, shortest_greedy_index);
+    writeCityOrderToCSV("./Table/Shortest_DC_Order.csv", city_coords, shortest_dc_index);
+    writeCityOrderToCSV("./Table/Shortest_DP_Order.csv", city_coords, shortest_dp_index);
     
     // Open the saved images using the system's default image viewer
 #ifdef _WIN32
-    system(("start " + initial_path_file).c_str());
-    system(("start " + shortest_greedy_path_file).c_str());
-    system(("start " + shortest_dc_path_file).c_str());
-    system(("start " + shortest_dp_path_file).c_str());
+    system("start ./Image/Initial_Path.png");
+    system("start ./Image/Shortest_Greedy_Path.png");
+    system("start ./Image/Shortest_DC_Path.png");
+    system("start ./Image/Shortest_DP_Path.png");
 #elif __APPLE__
-    system(("open " + initial_path_file).c_str());
-    system(("open " + shortest_greedy_path_file).c_str());
-    system(("open " + shortest_dc_path_file).c_str());
-    system(("open " + shortest_dp_path_file).c_str());
+    system("open ./Image/Initial_Path.png");
+    system("open ./Image/Shortest_Greedy_Path.png");
+    system("open ./Image/Shortest_DC_Path.png");
+    system("open ./Image/Shortest_DP_Path.png");
 #elif __linux__
-    system(("xdg-open " + initial_path_file).c_str());
-    system(("xdg-open " + shortest_greedy_path_file).c_str());
-    system(("xdg-open " + shortest_dc_path_file).c_str());
-    system(("xdg-open " + shortest_dp_path_file).c_str());
+    system("xdg-open ./Image/Initial_Path.png");
+    system("xdg-open ./Image/Shortest_Greedy_Path.png");
+    system("xdg-open ./Image/Shortest_DC_Path.png");
+    system("xdg-open ./Image/Shortest_DP_Path.png");
 #endif
 
     return 0;

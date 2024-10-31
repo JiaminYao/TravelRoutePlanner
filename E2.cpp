@@ -1,360 +1,483 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
+#include <vector>
 #include <fstream>
 #include <sstream>
-#include <vector>
-#include <string>
-#include <limits>
-#include <algorithm>
 #include <cmath>
+#include <limits>
 #include <unordered_map>
+#include <tuple>
 
 using namespace std;
 
-struct RouteInfo {
-    string city1, city2;
-    double regular_cost, regular_time;
-    double highway_cost, highway_time;
-};
-
-struct CityVisit {
-    string city;
+struct PathInfo {
+    vector<int> path;
     double cost;
     double time;
-    cv::Point point;
 };
 
-unordered_map<string, cv::Point> loadCityCoordinates(const string& filename) {
-    unordered_map<string, cv::Point> cityCoordinates;
-    ifstream file(filename);
-
-    if (!file.is_open()) {
-        cerr << "Error: Could not open the file " << filename << endl;
-        return cityCoordinates; // Return empty map if file cannot be opened
+// Function to load city coordinates from the CSV file
+vector<cv::Point> loadCityCoordinates(const string& coor_file, vector<string>& city_names) {
+    vector<cv::Point> city_list;
+    ifstream infile(coor_file);
+    if (!infile.is_open()) {
+        cerr << "Error: Could not open the coordinates file." << endl;
+        return city_list;
     }
 
     string line;
-    getline(file, line); // Skip the header line
+    getline(infile, line);  // Skip the header line if it exists
 
-    while (getline(file, line)) {
-        istringstream ss(line);
-        string city;
+    while (getline(infile, line)) {
+        stringstream ss(line);
+        string name, x_str, y_str;
         int x, y;
 
-        // Parse the city name and coordinates
-        getline(ss, city, ',');
-        ss >> x;
-        ss.ignore(1, ','); // Skip the comma
-        ss >> y;
-        // Store the data in the unordered_map
-        cityCoordinates[city] = cv::Point(x, y);
-    }
+        // Extract city name, x-coordinate, and y-coordinate
+        getline(ss, name, ',');
+        getline(ss, x_str, ',');
+        getline(ss, y_str, ',');
 
-    return cityCoordinates;
-}
-
-vector<RouteInfo> loadRoutesInfo(const string &filename) {
-    vector<RouteInfo> routes;
-    ifstream file(filename);
-    string title;
-    string line;
-
-    if (!file.is_open()) {
-        cerr << "Error: Could not open the file " << filename << endl;
-        return routes; // Return empty vector if file cannot be opened
-    }
-
-    // Read the title line (header)
-    getline(file, title);
-
-    // Read each subsequent line
-    while (getline(file, line)) {
-        istringstream ss(line);
-        RouteInfo route;
-
-        // Read each field, separated by commas
-        getline(ss, route.city1, ',');
-        getline(ss, route.city2, ',');
-        ss >> route.regular_cost;
-        ss.ignore(); // Ignore the comma
-        ss >> route.regular_time;
-        ss.ignore(); // Ignore the comma
-        ss >> route.highway_cost;
-        ss.ignore(); // Ignore the comma
-        ss >> route.highway_time;
-
-        routes.push_back(route);
-    }
-
-    file.close(); // Close the file
-    return routes;
-}
-
-// Function to check if a character is a space
-bool isWhitespace(char c) {
-    return isspace(static_cast<unsigned char>(c)); // Cast to unsigned char for safety
-}
-
-vector<string> loadCities(const string &filename) {
-    vector<string> cities;
-    ifstream file(filename);
-    string title;
-    getline(file, title);
-
-    if (!file.is_open()) {
-        cerr << "Error: Could not open the file " << filename << endl;
-        return cities; // Return empty vector if file cannot be opened
-    }
-
-    string city;
-    while (getline(file, city)) {
-        // Remove any unwanted newline characters and trim whitespace
-        city.erase(remove(city.begin(), city.end(), '\n'), city.end()); // Remove newlines
-        city.erase(remove_if(city.begin(), city.end(), isWhitespace), city.end()); // Remove spaces
-        cities.push_back(city);
-    }
-
-    file.close(); // Close the file
-    return cities;
-}
-
-// Function to find the next city using a greedy approach
-CityVisit findNextCity(const string& current_city, vector<RouteInfo>& roads, unordered_map<string, bool>& visited, unordered_map<string, cv::Point>& citycoordinates, bool isHighway) {
-    CityVisit next_city_data = {"", numeric_limits<double>::max(), numeric_limits<double>::max()};
-    //cout << roads[0].city1 << endl;
-    //cout << current_city<< endl;
-    for (const auto& road : roads) {
-        
-        if (road.city1 == current_city && !visited[road.city2] ) {
-            double cost = isHighway ? road.highway_cost : road.regular_cost;
-            double time = isHighway ? road.highway_time : road.regular_time;
-            if (cost < next_city_data.cost || (cost == next_city_data.cost && time < next_city_data.time)) {
-                next_city_data.city = road.city2;
-                next_city_data.cost = cost;
-                next_city_data.time = time;
-                next_city_data.point = citycoordinates[road.city2];
-            }
-        } else if (road.city2 == current_city && !visited[road.city1]) {
-            double cost = isHighway ? road.highway_cost : road.regular_cost;
-            double time = isHighway ? road.highway_time : road.regular_time;
-
-            if (cost < next_city_data.cost || (cost == next_city_data.cost && time < next_city_data.time)) {
-                next_city_data.city = road.city1;
-                next_city_data.cost = cost;
-                next_city_data.time = time;
-                next_city_data.point = citycoordinates[road.city1];
-            }
-        }
-    }
-
-    return next_city_data;
-}
-
-// Greedy algorithm to minimize total cost and time
-vector<CityVisit> travelGreedy(const vector<string>& cities_to_visit, vector<RouteInfo>& roads, unordered_map<string, cv::Point>& citycoordinates, bool isHighway) {
-    unordered_map<string, bool> visited;
-    vector<CityVisit> travel_sequence;
-
-    // Initialize visited cities map
-    for (const auto& city : cities_to_visit) {
-        visited[city] = false;
-    }
-
-    // Start from the first city in the cities_to_visit list
-    string current_city = cities_to_visit[0];
-    visited[current_city] = true;
-    CityVisit c;
-    c.city = current_city, c.cost = 0, c.time = 0, c.point = citycoordinates[current_city];
-    travel_sequence.push_back(c);
-
-    for (size_t i = 1; i < cities_to_visit.size(); ++i) {
-        CityVisit next_city_data = findNextCity(current_city, roads, visited, citycoordinates, isHighway);
-        //cout << i << endl;
-        if (next_city_data.city.empty()) {
-            cout << "No path found to complete the journey." << endl;
-            return vector<CityVisit>();
-        }
-
-        travel_sequence.push_back(next_city_data);
-        visited[next_city_data.city] = true;
-        current_city = next_city_data.city;
-    }
-
-    return travel_sequence;
-}
-
-// Function to print the travel sequence
-void printTravelSequence(const vector<CityVisit>& sequence) {
-    double total_cost = 0, total_time = 0;
-    cout << "Travel Sequence:" << endl;
-    for (const auto& step : sequence) {
-        cout << "City: " << step.city << ", Cost: " << step.cost << ", Time: " << step.time << step.point <<endl;
-        total_cost += step.cost;
-        total_time += step.time;
-    }
-    cout << "Total Cost: " << total_cost << ", Total Time: " << total_time << endl;
-}
-
-/* void writeCityOrderToCSV(const string& file_name, const vector<City>& city_list, const vector<int>& path)
-{
-    ofstream outfile(file_name);
-    if (!outfile.is_open())
-    {
-        cerr << "Error: Could not open the file " << file_name << " for writing." << endl;
-        return;
-    }
-
-    // Write header
-    outfile << "Index,City Name,Coordinate (x,y)\n";
-
-    // Write city information based on the path
-    for (size_t i = 0; i < path.size(); i++)
-    {
-        int idx = path[i];
-        outfile << i << "," << city_list[idx].name << ",(" << city_list[idx].point.x << "," << city_list[idx].point.y << ")\n";
-    }
-
-    outfile.close();
-    cout << "City order saved to " << file_name << endl;
-}
- */
-// Function to draw Initial Path without order (plot cities, draw paths, and annotate them with their index)
-void drawInitialPath(cv::Mat& img, unordered_map<string, cv::Point> cityCoordinates)
-{
-
-    vector<cv::Point> city_list;
-    for (const auto& city : cityCoordinates) {
-        city_list.push_back(city.second); // Only push back the coordinates (cv::Point)
-        cout << 7 << endl;
-    }
-
-    // Plot the cities, draw paths, and annotate with index
-    for (size_t i = 0; i < city_list.size(); i++)
-    {
-        // Plot city as a red circle
-        cv::circle(img, city_list[i], 10, cv::Scalar(0, 0, 255), -1);
-
-        // Annotate the city with its index
-        cv::putText(img, to_string(i), city_list[i], cv::FONT_HERSHEY_SIMPLEX, 1.5, cv::Scalar(0, 0, 0), 6);
-
-        // Draw line to the next city (if there is one)
-        if (i < city_list.size() - 1)
+        try {
+            x = stoi(x_str);
+            y = stoi(y_str);
+            city_list.emplace_back(x, y);
+            city_names.push_back(name);
+        } catch (invalid_argument&) 
         {
-            cv::line(img, city_list[i], city_list[i + 1], cv::Scalar(255, 0, 0), 4);
+            cerr << "Error: Invalid numeric value in coordinates for city " << name << endl;
+            continue;
         }
     }
 
-    // Close the path (draw line from last city to first city)
-    if (!city_list.empty())
-    {
-        cv::line(img, city_list[city_list.size() - 1], city_list[0], cv::Scalar(255, 0, 0), 4);
-    }
+    infile.close();
+    return city_list;
 }
 
-void drawShortestGreedyPath(cv::Mat& img, const vector<CityVisit> visitListR)
-{
+// Function to load travel costs and times
+unordered_map<string, vector<double>> loadTravelData(const string& file) {
+    unordered_map<string, vector<double>> travel_data;
+    ifstream infile(file);
+    if (!infile.is_open()) {
+        cerr << "Error: Could not open the travel data file." << endl;
+        return travel_data;
+    }
+
+    string line;
+    getline(infile, line);  // Skip header
+
+    while (getline(infile, line)) {
+        stringstream ss(line);
+        string from, to, reg_cost_str, reg_time_str, hw_cost_str, hw_time_str;
+        double reg_cost, reg_time, hw_cost, hw_time;
+
+        // Read data with commas
+        getline(ss, from, ',');
+        getline(ss, to, ',');
+        getline(ss, reg_cost_str, ',');
+        getline(ss, reg_time_str, ',');
+        getline(ss, hw_cost_str, ',');
+        getline(ss, hw_time_str, ',');
+
+        // Convert strings to double
+        try {
+            reg_cost = stod(reg_cost_str);
+            reg_time = stod(reg_time_str);
+            hw_cost = stod(hw_cost_str);
+            hw_time = stod(hw_time_str);
+
+            string key = from + "_" + to;
+            travel_data[key] = {reg_cost, reg_time, hw_cost, hw_time};
+        } catch (const invalid_argument& e) {
+            cerr << "Error: Invalid numeric data in line: " << line << endl;
+            continue;
+        }
+    }
+    infile.close();
+    return travel_data;
+}
+
+// Function to implement the Greedy algorithm to find the min cost and min time path
+std::tuple<vector<int>, vector<int>, vector<int>, vector<int>> drivingGreedyPath(
+    const vector<cv::Point>& city_list,
+    const unordered_map<string, vector<double>>& travel_data,
+    const vector<string>& city_names) {
     
-    // Plot the cities and annotate them with their new greedy index
-    for (size_t i = 0; i < visitListR.size(); i++)
-    {
-        // Plot city as a red circle
-        cv::circle(img, visitListR[i].point, 10, cv::Scalar(0, 0, 255), -1);
+    int n = city_list.size();
+    if (n == 0) return {{}, {}, {}, {}};
 
-        // Annotate the city with its new greedy index
-        cv::putText(img, to_string(i), visitListR[i].point, cv::FONT_HERSHEY_SIMPLEX, 1.5, cv::Scalar(0, 0, 0), 6);
+    // Initialize paths and visited flags for each path type
+    vector<int> regular_cost_path, regular_time_path, highway_cost_path, highway_time_path;
+    vector<bool> visited_regular_cost(n, false), visited_regular_time(n, false);
+    vector<bool> visited_highway_cost(n, false), visited_highway_time(n, false);
+
+    int current_city_regular_cost = 0, current_city_regular_time = 0;
+    int current_city_highway_cost = 0, current_city_highway_time = 0;
+
+    // Start paths with the initial city and mark it as visited
+    regular_cost_path.push_back(current_city_regular_cost);
+    regular_time_path.push_back(current_city_regular_time);
+    highway_cost_path.push_back(current_city_highway_cost);
+    highway_time_path.push_back(current_city_highway_time);
+
+    visited_regular_cost[current_city_regular_cost] = true;
+    visited_regular_time[current_city_regular_time] = true;
+    visited_highway_cost[current_city_highway_cost] = true;
+    visited_highway_time[current_city_highway_time] = true;
+
+    for (int i = 1; i < n; i++) {
+        // Initialize minimum values and next city selections for each path type
+        double min_reg_cost = numeric_limits<double>::max();
+        double min_reg_time = numeric_limits<double>::max();
+        double min_highway_cost = numeric_limits<double>::max();
+        double min_highway_time = numeric_limits<double>::max();
+
+        int next_city_reg_cost = -1, next_city_reg_time = -1;
+        int next_city_highway_cost = -1, next_city_highway_time = -1;
+
+        // Loop through each city to determine the next city for each path type
+        for (int j = 0; j < n; j++) {
+            if (!visited_regular_cost[j]) {
+                string key = city_names[current_city_regular_cost] + "_" + city_names[j];
+                string reverse_key = city_names[j] + "_" + city_names[current_city_regular_cost];
+                
+                double reg_cost = travel_data.count(key) ? travel_data.at(key)[0] :
+                                (travel_data.count(reverse_key) ? travel_data.at(reverse_key)[0] : numeric_limits<double>::max());
+
+                if (reg_cost < min_reg_cost) {
+                    min_reg_cost = reg_cost;
+                    next_city_reg_cost = j;
+                }
+            }
+
+            if (!visited_regular_time[j]) {
+                string key = city_names[current_city_regular_time] + "_" + city_names[j];
+                string reverse_key = city_names[j] + "_" + city_names[current_city_regular_time];
+                
+                double reg_time = travel_data.count(key) ? travel_data.at(key)[1] :
+                                (travel_data.count(reverse_key) ? travel_data.at(reverse_key)[1] : numeric_limits<double>::max());
+
+                if (reg_time < min_reg_time) {
+                    min_reg_time = reg_time;
+                    next_city_reg_time = j;
+                }
+            }
+
+            if (!visited_highway_cost[j]) {
+                string key = city_names[current_city_highway_cost] + "_" + city_names[j];
+                string reverse_key = city_names[j] + "_" + city_names[current_city_highway_cost];
+                
+                double hw_cost = travel_data.count(key) ? travel_data.at(key)[2] :
+                                (travel_data.count(reverse_key) ? travel_data.at(reverse_key)[2] : numeric_limits<double>::max());
+
+                if (hw_cost < min_highway_cost) {
+                    min_highway_cost = hw_cost;
+                    next_city_highway_cost = j;
+                }
+            }
+
+            if (!visited_highway_time[j]) {
+                string key = city_names[current_city_highway_time] + "_" + city_names[j];
+                string reverse_key = city_names[j] + "_" + city_names[current_city_highway_time];
+                
+                double hw_time = travel_data.count(key) ? travel_data.at(key)[3] :
+                                (travel_data.count(reverse_key) ? travel_data.at(reverse_key)[3] : numeric_limits<double>::max());
+
+                if (hw_time < min_highway_time) {
+                    min_highway_time = hw_time;
+                    next_city_highway_time = j;
+                }
+            }
+        }
+
+        // Update paths and mark cities as visited for each path type
+        if (next_city_reg_cost != -1) {
+            regular_cost_path.push_back(next_city_reg_cost);
+            visited_regular_cost[next_city_reg_cost] = true;
+            current_city_regular_cost = next_city_reg_cost;
+        }
+
+        if (next_city_reg_time != -1) {
+            regular_time_path.push_back(next_city_reg_time);
+            visited_regular_time[next_city_reg_time] = true;
+            current_city_regular_time = next_city_reg_time;
+        }
+
+        if (next_city_highway_cost != -1) {
+            highway_cost_path.push_back(next_city_highway_cost);
+            visited_highway_cost[next_city_highway_cost] = true;
+            current_city_highway_cost = next_city_highway_cost;
+        }
+
+        if (next_city_highway_time != -1) {
+            highway_time_path.push_back(next_city_highway_time);
+            visited_highway_time[next_city_highway_time] = true;
+            current_city_highway_time = next_city_highway_time;
+        }
     }
 
-    // Draw the greedy path with green lines based on the calculated path
-    for (size_t i = 0; i < visitListR.size() - 1; i++)
-    {
-        cv::line(img, visitListR[i].point, visitListR[i+1].point, cv::Scalar(30, 150, 80), 4);
+    return {regular_cost_path, regular_time_path, highway_cost_path, highway_time_path};
+}
+
+// Function to draw the Shortest Path using Greedy Algorithm
+void drawDrivingGreedyPath(cv::Mat& base_img, const vector<cv::Point>& city_coords, const vector<int>& path, const string& output_file) {
+    cv::Mat img = base_img.clone();
+    for (size_t i = 0; i < path.size(); ++i) {
+        int greedy_index = path[i];
+        cv::circle(img, city_coords[greedy_index], 10, cv::Scalar(0, 0, 255), -1);
+        cv::putText(img, to_string(i), city_coords[greedy_index], cv::FONT_HERSHEY_SIMPLEX, 1.5, cv::Scalar(0, 0, 0), 6);
     }
 
-    // Close the greedy path (draw line from last city to first city in path)
-    if (!visitListR.empty())
-    {
-        cv::line(img, visitListR[visitListR.size() - 1].point, visitListR[0].point, cv::Scalar(30, 150, 80), 4);
+    for (size_t i = 0; i < path.size() - 1; i++) {
+        cv::line(img, city_coords[path[i]], city_coords[path[i + 1]], cv::Scalar(30, 150, 80), 4);
+    }
+    cv::line(img, city_coords[path.back()], city_coords[path[0]], cv::Scalar(30, 150, 80), 4);
+    cv::imwrite(output_file, img);
+}
+
+// Function to calculate travel cost or time between two cities
+double getTravelMetric(const unordered_map<string, vector<double>>& travel_data, const vector<string>& city_names, int city1, int city2, bool highway, bool cost_metric) {
+    string key = city_names[city1] + "_" + city_names[city2];
+    string reverse_key = city_names[city2] + "_" + city_names[city1];
+    int index = highway ? (cost_metric ? 2 : 3) : (cost_metric ? 0 : 1);
+
+    if (travel_data.find(key) != travel_data.end()) {
+        return travel_data.at(key)[index];
+    } else if (travel_data.find(reverse_key) != travel_data.end()) {
+        return travel_data.at(reverse_key)[index];
+    }
+    return numeric_limits<double>::max(); // No data, return large value
+}
+
+// Recursive function to find the optimal path by Divide-and-Conquer without skipping cities
+PathInfo divideAndConquerPath(int start, int end, const unordered_map<string, vector<double>>& travel_data, const vector<string>& city_names, bool highway, bool cost_metric, vector<bool>& visited) {
+    // Base case: single city
+    if (start == end) {
+        visited[start] = true;  // Mark as visited
+        return {{start}, 0, 0};
+    }
+
+    int mid = start + (end - start) / 2;
+    
+    // Divide: Recursive calls for left and right halves, ensuring cities are marked as visited
+    PathInfo left_path = divideAndConquerPath(start, mid, travel_data, city_names, highway, cost_metric, visited);
+    PathInfo right_path = divideAndConquerPath(mid + 1, end, travel_data, city_names, highway, cost_metric, visited);
+
+    // Calculate cost and time to connect left half to right half
+    double min_bridge_cost = numeric_limits<double>::max();
+    double min_bridge_time = numeric_limits<double>::max();
+    int best_left = -1, best_right = -1;
+
+    // Find optimal "bridge" between the last city in left and the first city in right
+    for (int i = 0; i < left_path.path.size(); i++) {
+        for (int j = 0; j < right_path.path.size(); j++) {
+            double bridge_cost = getTravelMetric(travel_data, city_names, left_path.path[i], right_path.path[j], highway, true);
+            double bridge_time = getTravelMetric(travel_data, city_names, left_path.path[i], right_path.path[j], highway, false);
+            
+            if ((cost_metric && bridge_cost < min_bridge_cost) || (!cost_metric && bridge_time < min_bridge_time)) {
+                min_bridge_cost = bridge_cost;
+                min_bridge_time = bridge_time;
+                best_left = i;
+                best_right = j;
+            }
+        }
+    }
+
+    // Merge: Combine paths from left and right halves with the optimal bridge
+    PathInfo result;
+    result.path.insert(result.path.end(), left_path.path.begin(), left_path.path.end());
+    result.path.insert(result.path.end(), right_path.path.begin(), right_path.path.end());
+    result.cost = left_path.cost + right_path.cost + min_bridge_cost;
+    result.time = left_path.time + right_path.time + min_bridge_time;
+
+    return result;
+}
+
+// Wrapper function to generate paths for all metrics using Divide-and-Conquer
+std::tuple<vector<int>, vector<int>, vector<int>, vector<int>> drivingDCPath(
+    const vector<cv::Point>& city_list,
+    const unordered_map<string, vector<double>>& travel_data,
+    const vector<string>& city_names) {
+    
+    int n = city_list.size();
+    if (n == 0) return {{}, {}, {}, {}};
+
+    // Track visited cities to ensure all are included
+    vector<bool> visited(n, false);
+
+    // Calculate paths for each metric
+    PathInfo reg_cost_path = divideAndConquerPath(0, n - 1, travel_data, city_names, false, true, visited);
+    PathInfo reg_time_path = divideAndConquerPath(0, n - 1, travel_data, city_names, false, false, visited);
+    PathInfo hw_cost_path = divideAndConquerPath(0, n - 1, travel_data, city_names, true, true, visited);
+    PathInfo hw_time_path = divideAndConquerPath(0, n - 1, travel_data, city_names, true, false, visited);
+
+    // Ensure each path visits all cities by checking the size
+    if (reg_cost_path.path.size() != n || reg_time_path.path.size() != n || hw_cost_path.path.size() != n || hw_time_path.path.size() != n) {
+        cerr << "Error: DC algorithm did not visit all cities in one or more paths." << endl;
+    }
+
+    // Return only the paths
+    return {reg_cost_path.path, reg_time_path.path, hw_cost_path.path, hw_time_path.path};
+}
+
+void drawDrivingDCPath(cv::Mat& base_img, const vector<cv::Point>& city_coords, const vector<int>& path, const string& output_file) {
+    cv::Mat img = base_img.clone();
+    for (size_t i = 0; i < path.size(); ++i) {
+        int dc_index = path[i];
+        cv::circle(img, city_coords[dc_index], 10, cv::Scalar(0, 0, 255), -1);
+        cv::putText(img, to_string(i), city_coords[dc_index], cv::FONT_HERSHEY_SIMPLEX, 1.5, cv::Scalar(0, 0, 0), 6);
+    }
+
+    for (size_t i = 0; i < path.size() - 1; ++i) {
+        cv::line(img, city_coords[path[i]], city_coords[path[i + 1]], cv::Scalar(170, 30, 220), 4);
+    }
+    if (!path.empty()) {
+        cv::line(img, city_coords[path.back()], city_coords[path[0]], cv::Scalar(170, 30, 220), 4);
+    }
+    cv::imwrite(output_file, img);
+}
+
+// Updated function to calculate total cost, considering regular or highway based on 'highway' flag
+double calculateTotalCost(const vector<int>& path, const unordered_map<string, vector<double>>& travel_data, const vector<string>& city_names, bool highway = false) {
+    double total_cost = 0.0;
+
+    for (size_t i = 0; i < path.size() - 1; ++i) {
+        string key = city_names[path[i]] + "_" + city_names[path[i + 1]];
+        string reverse_key = city_names[path[i + 1]] + "_" + city_names[path[i]];
+
+        int cost_index = highway ? 2 : 0; // Use highway cost if 'highway' is true, otherwise regular cost
+
+        if (travel_data.find(key) != travel_data.end()) {
+            total_cost += travel_data.at(key)[cost_index];
+        } else if (travel_data.find(reverse_key) != travel_data.end()) {
+            total_cost += travel_data.at(reverse_key)[cost_index];
+        } else {
+            cerr << "Warning: No travel data found for route " << key << " or " << reverse_key << endl;
+        }
+    }
+
+    return total_cost;
+}
+
+// Updated function to calculate total time, considering regular or highway based on 'highway' flag
+int calculateTotalTime(const vector<int>& path, const unordered_map<string, vector<double>>& travel_data, const vector<string>& city_names, bool highway = false) {
+    int total_time = 0;
+
+    for (size_t i = 0; i < path.size() - 1; ++i) {
+        string key = city_names[path[i]] + "_" + city_names[path[i + 1]];
+        string reverse_key = city_names[path[i + 1]] + "_" + city_names[path[i]];
+
+        int time_index = highway ? 3 : 1; // Use highway time if 'highway' is true, otherwise regular time
+
+        if (travel_data.find(key) != travel_data.end()) {
+            total_time += travel_data.at(key)[time_index];
+        } else if (travel_data.find(reverse_key) != travel_data.end()) {
+            total_time += travel_data.at(reverse_key)[time_index];
+        } else {
+            cerr << "Warning: No travel data found for route " << key << " or " << reverse_key << endl;
+        }
+    }
+
+    return total_time;
+}
+
+void writeCityOrderToCSV(const string& filename, const vector<int>& path, const vector<string>& city_names, const vector<cv::Point>& city_coords, int total_cost, int total_time) {
+    ofstream outfile(filename);
+    if (outfile.is_open()) {
+        outfile << "Index,City Name,Coordinate (x,y)" << endl;
+
+        for (size_t new_index = 0; new_index < path.size(); ++new_index) {
+            int original_index = path[new_index];
+            outfile << new_index << "," << city_names[original_index]
+                    << ",(" << city_coords[original_index].x 
+                    << "," << city_coords[original_index].y << ")" << endl;
+        }
+        outfile.close();
+    } else {
+        cerr << "Error: Could not open file " << filename << " for writing." << endl;
     }
 }
 
+// Main function with updated calls
 int main() {
-    //file names for dataset
-    string filenameD = "Dataset/Dataset_Driving.csv";
-    string filenameC = "Dataset/Cites.csv";
-    string filenameCC = "Dataset/Dataset_Coordinate.csv";
-    
-    //load the data seperatly, initialize the vector that store the final path
-    vector<string> cities = loadCities(filenameC);
-    vector<RouteInfo> drivingInfo = loadRoutesInfo(filenameD);
-    unordered_map<string, cv::Point> cityCoordinates = loadCityCoordinates(filenameCC);
-    vector<CityVisit> visitListR;
-    vector<CityVisit> visitListH;
-    
-    // Load the image (replace with your image path)
-    string image_file = "Image/Europe.png";
-    cv::Mat img_initial = cv::imread(image_file);  // For initial path
-    cv::Mat img_greedy = cv::imread(image_file);   // For greedy path
-    cv::Mat img_dc = cv::imread(image_file);       // For divide-and-conquer path
-    cv::Mat img_dp = cv::imread(image_file);       // For dynamic programming path
+    vector<string> city_names;
+    vector<cv::Point> city_coords = loadCityCoordinates("./Dataset/Dataset_Coordinate.csv", city_names);
+    if (city_coords.empty()) return -1;
 
-    if (img_initial.empty() || img_greedy.empty() || img_dc.empty() || img_dp.empty())
-    {
-        cerr << "Error: Unable to load image." << endl;
-        return -1;
+    auto travel_data = loadTravelData("./Dataset/Dataset_Driving.csv");
+    cv::Mat base_img = cv::imread("./Image/Europe.png");
+    if (base_img.empty()) return -1;
+
+    // Get paths for different scenarios
+    auto [reg_cost_path_greedy, reg_time_path_greedy, hw_cost_path_greedy, hw_time_path_greedy] = drivingGreedyPath(city_coords, travel_data, city_names);
+    auto [reg_cost_path_dc, reg_time_path_dc, hw_cost_path_dc, hw_time_path_dc] = drivingDCPath(city_coords, travel_data, city_names);
+
+    // Define path information for each type
+    struct PathInfo {
+        vector<int> path;
+        bool highway;
+        string path_name;
+        string image_filename;
+        string csv_filename;
+    };
+
+    vector<PathInfo> greedy_paths = {
+        {reg_cost_path_greedy, false, "Greedy Regular Road Min Cost Path", "./Image/Driving_Greedy_MinRegularCost_Path.png", "./Table/Driving_Greedy_MinRegularCost_Order.csv"},
+        {reg_time_path_greedy, false, "Greedy Regular Road Min Time Path", "./Image/Driving_Greedy_MinRegularTime_Path.png", "./Table/Driving_Greedy_MinRegularTime_Order.csv"},
+        {hw_cost_path_greedy, true, "Greedy Highway Min Cost Path", "./Image/Driving_Greedy_MinHighwayCost_Path.png", "./Table/Driving_Greedy_MinHighwayCost_Order.csv"},
+        {hw_time_path_greedy, true, "Greedy Highway Min Time Path", "./Image/Driving_Greedy_MinHighwayTime_Path.png", "./Table/Driving_Greedy_MinHighwayTime_Order.csv"}
+    };
+
+    vector<PathInfo> dc_paths = {
+        {reg_cost_path_dc, false, "DC Regular Road Min Cost Path", "./Image/Driving_DC_MinRegularCost_Path.png", "./Table/Driving_DC_MinRegularCost_Order.csv"},
+        {reg_time_path_dc, false, "DC Regular Road Min Time Path", "./Image/Driving_DC_MinRegularTime_Path.png", "./Table/Driving_DC_MinRegularTime_Order.csv"},
+        {hw_cost_path_dc, true, "DC Highway Min Cost Path", "./Image/Driving_DC_MinHighwayCost_Path.png", "./Table/Driving_DC_MinHighwayCost_Order.csv"},
+        {hw_time_path_dc, true, "DC Highway Min Time Path", "./Image/Driving_DC_MinHighwayTime_Path.png", "./Table/Driving_DC_MinHighwayTime_Order.csv"}
+    };
+
+    // Process and save paths for both Greedy and Divide & Conquer algorithms
+    for (const auto& path_info : greedy_paths) {
+        double total_cost = calculateTotalCost(path_info.path, travel_data, city_names, path_info.highway);
+        int total_time = calculateTotalTime(path_info.path, travel_data, city_names, path_info.highway);
+
+        cout << path_info.path_name << " Total Cost: $" << total_cost << ", Total Time: " << total_time << " mins" << endl;
+        cv::Mat img_greedy = cv::imread("./Image/Europe.png");
+        drawDrivingGreedyPath(img_greedy, city_coords, path_info.path, path_info.image_filename);
+        writeCityOrderToCSV(path_info.csv_filename, path_info.path, city_names, city_coords, total_cost, total_time);
     }
 
-    
+    // Process and save paths for Divide & Conquer (DC) paths
+    for (const auto& path_info : dc_paths) {
+        double total_cost = calculateTotalCost(path_info.path, travel_data, city_names, path_info.highway);
+        int total_time = calculateTotalTime(path_info.path, travel_data, city_names, path_info.highway);
 
-    // Assuming drawInitialPath is defined and takes an image and a vector of Points
-    drawInitialPath(img_initial, cityCoordinates);
+        cout << path_info.path_name << " Total Cost: $" << total_cost << ", Total Time: " << total_time << " mins" << endl;
 
-    // Run greedy algorithm for regular roads
-    visitListR = travelGreedy(cities, drivingInfo, cityCoordinates, false);
-    printTravelSequence(visitListR);
+        // Load a separate image for each path visualization
+        cv::Mat img_dc = cv::imread("./Image/Europe.png");
+        if (img_dc.empty()) {
+            cerr << "Error: Could not load image for path visualization." << endl;
+            continue;
+        }
 
-    drawShortestGreedyPath(img_greedy, visitListR);
+        drawDrivingDCPath(img_dc, city_coords, path_info.path, path_info.image_filename);
+        writeCityOrderToCSV(path_info.csv_filename, path_info.path, city_names, city_coords, total_cost, total_time);
+    }
 
-    // Greedy solution for both regular and highway
-    //greedyPath(cities, roads, false, greedyPathReg);
-    //greedyPath(cities, roads, true, greedyPathHwy);
+    // Open the saved images using the system's default image viewer
+    std::vector<PathInfo> all_paths = greedy_paths;
+    all_paths.insert(all_paths.end(), dc_paths.begin(), dc_paths.end());
 
-    // Dynamic Programming solution for both regular and highway
-    //dynamicProgrammingPath(cities, roads, false, dpPathReg);
-    //dynamicProgrammingPath(cities, roads, true, dpPathHwy);
-
-    // Divide and Conquer solution for both regular and highway
-    //divideAndConquerPath(cities, roads, false, dcPathReg);
-    //divideAndConquerPath(cities, roads, true, dcPathHwy);
-
-    // Output Results (greedy, DP, DC paths for regular and highway as required)
-    string initial_path_file = "Image/E2Initial_Path.png";
-    string shortest_greedy_path_file = "Image/E2Shortest_Greedy_Path.png";
-    string shortest_dc_path_file = "./Image/E2hortest_DC_Path.png";
-    string shortest_dp_path_file = "./Image/E2Shortest_DP_Path.png";
-
-    cv::imwrite(initial_path_file, img_initial);
-    cout << "Initial path saved to " << initial_path_file << endl;
-
-    cv::imwrite(shortest_greedy_path_file, img_greedy);
-    cout << "Shortest path (greedy) saved to " << shortest_greedy_path_file << endl;
-    
-
-     // Open the saved images using the system's default image viewer
+for (const auto& path_info : all_paths) {
 #ifdef _WIN32
-    system(("start " + initial_path_file).c_str());
-    system(("start " + shortest_greedy_path_file).c_str());
-    system(("start " + shortest_dc_path_file).c_str());
-    system(("start " + shortest_dp_path_file).c_str());
+    system(("start " + path_info.image_filename).c_str());
 #elif __APPLE__
-    system(("open " + initial_path_file).c_str());
-    system(("open " + shortest_greedy_path_file).c_str());
-    system(("open " + shortest_dc_path_file).c_str());
-    system(("open " + shortest_dp_path_file).c_str());
+    system(("open " + path_info.image_filename).c_str());
 #elif __linux__
-    system(("xdg-open " + initial_path_file).c_str());
-    system(("xdg-open " + shortest_greedy_path_file).c_str());
-    system(("xdg-open " + shortest_dc_path_file).c_str());
-    system(("xdg-open " + shortest_dp_path_file).c_str());
+    system(("xdg-open " + path_info.image_filename).c_str());
 #endif
+}
+
     return 0;
 }
+
