@@ -468,30 +468,30 @@ int main()
     cout << "Total distance (Dynamic Programming): " << dp_total_distance << " units" << " = " << dp_total_distance*0.9 << " km" << endl;
 
     cv::imwrite("./Image/Initial_Path.png", img_initial);
-    cv::imwrite("./Image/E1Shortest_Greedy_Path.png", img_greedy);
-    cv::imwrite("./Image/E1Shortest_DC_Path.png", img_dc);
-    cv::imwrite("./Image/E1Shortest_DP_Path.png", img_dp);
+    cv::imwrite("./Image/E1Helicopter_Greedy_Path.png", img_greedy);
+    cv::imwrite("./Image/E1Helicopter_DC_Path.png", img_dc);
+    cv::imwrite("./Image/E1Helicopter_DP_Path.png", img_dp);
 
-    writeCityOrderToCSV("./Table/E1Shortest_Greedy_Order.csv", city_coords, shortest_greedy_index);
-    writeCityOrderToCSV("./Table/E1Shortest_DC_Order.csv", city_coords, shortest_dc_index);
-    writeCityOrderToCSV("./Table/E1Shortest_DP_Order.csv", city_coords, shortest_dp_index);
+    writeCityOrderToCSV("./Table/E1Helicopter_Greedy_Order.csv", city_coords, shortest_greedy_index);
+    writeCityOrderToCSV("./Table/E1Helicopter_DC_Order.csv", city_coords, shortest_dc_index);
+    writeCityOrderToCSV("./Table/E1Helicopter_DP_Order.csv", city_coords, shortest_dp_index);
     
     // Open the saved images using the system's default image viewer
 #ifdef _WIN32
     system("start ./Image/Initial_Path.png");
-    system("start ./Image/E1Shortest_Greedy_Path.png");
-    system("start ./Image/E1Shortest_DC_Path.png");
-    system("start ./Image/E1Shortest_DP_Path.png");
+    system("start ./Image/E1Helicopter_Greedy_Path.png");
+    system("start ./Image/E1Helicopter_DC_Path.png");
+    system("start ./Image/E1Helicopter_DP_Path.png");
 #elif __APPLE__
     system("open ./Image/Initial_Path.png");
-    system("open ./Image/E1Shortest_Greedy_Path.png");
-    system("open ./Image/E1Shortest_DC_Path.png");
-    system("open ./Image/E1Shortest_DP_Path.png");
+    system("open ./Image/E1Helicopter_Greedy_Path.png");
+    system("open ./Image/E1Helicopter_DC_Path.png");
+    system("open ./Image/E1Helicopter_DP_Path.png");
 #elif __linux__
     system("xdg-open ./Image/Initial_Path.png");
-    system("xdg-open ./Image/E1Shortest_Greedy_Path.png");
-    system("xdg-open ./Image/E1Shortest_DC_Path.png");
-    system("xdg-open ./Image/E1Shortest_DP_Path.png");
+    system("xdg-open ./Image/E1Helicopter_Greedy_Path.png");
+    system("xdg-open ./Image/E1Helicopter_DC_Path.png");
+    system("xdg-open ./Image/E1Helicopter_DP_Path.png");
 #endif
 
     return 0;

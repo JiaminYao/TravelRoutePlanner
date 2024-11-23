@@ -1,26 +1,75 @@
 # Setup Guide for C++ Program with OpenCV
 
+This guide walks you through the setup required to compile and run the C++ program using OpenCV. Instructions are provided for macOS, Windows, and Linux.
+
+
 ## Prerequisites
 
-Ensure that you have **Homebrew** installed on your system. If it’s not installed, you can do so by running the following command in your terminal:
+C++ Compiler: Ensure you have a C++ compiler that supports at least C++17 (e.g., g++ or clang).
+OpenCV Library: Install OpenCV 4 or later.
+pkg-config (for macOS and Linux): Required for linking OpenCV.
 
-> **Note:** You will also need to install **OpenCV** and **pkg-config** using **Homebrew** to compile and run the C++ program. Follow the steps below.
 
-```bash
-# Install Homebrew (if not installed already)
+## Setup Instructions by Operating System
+
+## macOS
+
+**Install Homebrew (if not already installed):**
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-# Install pkg-config and OpenCV using Homebrew
+**Install pkg-config and OpenCV:**
 brew install pkg-config
 brew install opencv
 
-# Verify OpenCV installation
+**Verify the OpenCV installation:**
 pkg-config --modversion opencv4
 
-# Compile the C++ program using g++ and OpenCV libraries
+**Compile the program:**
 g++ -std=c++17 -o E1 E1.cpp `pkg-config --cflags --libs opencv4`
+g++ -std=c++17 -o E2 E2.cpp `pkg-config --cflags --libs opencv4`
+g++ -std=c++17 -o E3 E3.cpp `pkg-config --cflags --libs opencv4`
 
-# Run the compiled program
+**Run the program:**
 ./E1
+./E2
+./E3
 
 
+## Windows
+
+**Install MinGW-w64 or a compatible compiler:**
+Download and install from MinGW-w64.
+
+**Install OpenCV:**
+Download OpenCV from opencv.org.
+Extract the archive and set the environment variable OpenCV_DIR to the folder containing the OpenCV libraries.
+
+**Compile the program:** Replace <opencv_include_dir> and <opencv_library_dir> with the paths to OpenCV's include and lib directories.
+g++ -std=c++17 -o E1 E1.cpp -I<opencv_include_dir> -L<opencv_library_dir> -lopencv_core -lopencv_imgproc -lopencv_highgui
+g++ -std=c++17 -o E2 E2.cpp -I<opencv_include_dir> -L<opencv_library_dir> -lopencv_core -lopencv_imgproc -lopencv_highgui
+g++ -std=c++17 -o E3 E3.cpp -I<opencv_include_dir> -L<opencv_library_dir> -lopencv_core -lopencv_imgproc -lopencv_highgui
+
+**Run the program:**
+E1.exe
+E2.exe
+E3.exe
+
+
+## Linux
+
+**Install the required tools:**
+sudo apt update
+sudo apt install build-essential pkg-config libopencv-dev
+
+**Verify the OpenCV installation:**
+pkg-config --modversion opencv4
+
+**Compile the program:**
+g++ -std=c++17 -o E1 E1.cpp `pkg-config --cflags --libs opencv4`
+g++ -std=c++17 -o E2 E2.cpp `pkg-config --cflags --libs opencv4`
+g++ -std=c++17 -o E3 E3.cpp `pkg-config --cflags --libs opencv4`
+
+**Run the program:**
+./E1
+./E2
+./E3
