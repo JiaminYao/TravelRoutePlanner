@@ -36,14 +36,14 @@
 
 ## Dynamic Programming (TSP) Algorithm
 - Use Dynamic Programming with Bitmasking to find the globally optimal solution for visiting all cities and returning to the starting point.
-- Initialize a DP table `dp[mask][i]` where:
-  - `mask` represents the set of visited cities as a bitmask.
-  - `i` is the current city being visited.
-  - `dp[mask][i]` stores the minimum distance to visit all cities in the set `mask` ending at city `i`.
-- Set the base case: Starting from city 0, `dp[1][0] = 0` (starting at city 0 with only city 0 visited).
+- Initialize a DP table dp[mask][i] where:
+  - mask represents the set of visited cities as a bitmask.
+  - i is the current city being visited.
+  - dp[mask][i] stores the minimum distance to visit all cities in the set mask ending at city i.
+- Set the base case: Starting from city 0, dp[1][0] = 0 (starting at city 0 with only city 0 visited).
 - For each subset of cities, calculate the minimum distance for visiting each city and update the DP table by considering all possible next steps:
-  - Transition from city `u` to city `v` if city `v` has not yet been visited in the current subset.
-  - Update `dp[mask | (1 << v)][v]` to keep track of the shortest path to visit `v`.
+  - Transition from city u to city v if city v has not yet been visited in the current subset.
+  - Update dp[mask | (1 << v)][v] to keep track of the shortest path to visit v.
 - Once all cities are visited, check the minimum cost to return to the starting city.
 - Reconstruct the path by backtracking from the last visited city to the starting city.
 
