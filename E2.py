@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Data
 cities = [18, 15, 12, 9, 6]
@@ -21,12 +22,12 @@ dp_highway_time = [4286, 4042, 3785, 3018, 2650]
 
 # Plot Min Cost Path
 plt.figure(figsize=(12, 8))
-plt.plot(cities, greedy_regular_cost, marker='o', label='Greedy Regular (Cost)', color='blue')
-plt.plot(cities, greedy_highway_cost, marker='s', label='Greedy Highway (Cost)', color='lightblue')
-plt.plot(cities, dc_regular_cost, marker='o', label='Divide-and-Conquer Regular (Cost)', color='red')
-plt.plot(cities, dc_highway_cost, marker='s', label='Divide-and-Conquer Highway (Cost)', color='lightcoral')
-plt.plot(cities, dp_regular_cost, marker='o', label='Dynamic Programming Regular (Cost)', color='green')
-plt.plot(cities, dp_highway_cost, marker='s', label='Dynamic Programming Highway (Cost)', color='lightgreen')
+plt.plot(cities, greedy_regular_cost, marker='o', linestyle='-', label='Greedy Regular (Cost)', color='blue')
+plt.plot(cities, greedy_highway_cost, marker='s', linestyle='--', label='Greedy Highway (Cost)', color='lightblue')
+plt.plot(cities, dc_regular_cost, marker='o', linestyle='-', label='Divide-and-Conquer Regular (Cost)', color='red')
+plt.plot(cities, dc_highway_cost, marker='s', linestyle='--', label='Divide-and-Conquer Highway (Cost)', color='lightcoral')
+plt.plot(cities, dp_regular_cost, marker='o', linestyle='-', label='Dynamic Programming Regular (Cost)', color='green')
+plt.plot(cities, dp_highway_cost, marker='s', linestyle='--', label='Dynamic Programming Highway (Cost)', color='lightgreen')
 plt.title('Driving Minimum Cost Comparison of Different Algorithms')
 plt.xlabel('Number of Cities')
 plt.ylabel('Total Cost ($)')
@@ -36,17 +37,29 @@ plt.legend()
 plt.savefig('./Image/Comparison_Driving_MinCost.png')
 plt.show()
 
-# Plot Min Time Path
+# Convert time in minutes to days for the y-axis
+max_time = max(
+    greedy_regular_time
+    + greedy_highway_time
+    + dc_regular_time
+    + dc_highway_time
+    + dp_regular_time
+    + dp_highway_time
+)
+y_ticks_days = np.arange(0, (max_time // (24 * 60)) + 2, 1)  # Generate y-ticks for days
+
+# Plot Min Time Path with days as y-axis
 plt.figure(figsize=(12, 8))
-plt.plot(cities, greedy_regular_time, marker='o', label='Greedy Regular (Time)', color='blue')
-plt.plot(cities, greedy_highway_time, marker='s', label='Greedy Highway (Time)', color='lightblue')
-plt.plot(cities, dc_regular_time, marker='o', label='Divide-and-Conquer Regular (Time)', color='red')
-plt.plot(cities, dc_highway_time, marker='s', label='Divide-and-Conquer Highway (Time)', color='lightcoral')
-plt.plot(cities, dp_regular_time, marker='o', label='Dynamic Programming Regular (Time)', color='green')
-plt.plot(cities, dp_highway_time, marker='s', label='Dynamic Programming Highway (Time)', color='lightgreen')
+plt.plot(cities, np.array(greedy_regular_time) / (24 * 60), marker='o', linestyle='-', label='Greedy Regular (Time)', color='blue')
+plt.plot(cities, np.array(greedy_highway_time) / (24 * 60), marker='s', linestyle='--', label='Greedy Highway (Time)', color='lightblue')
+plt.plot(cities, np.array(dc_regular_time) / (24 * 60), marker='o', linestyle='-', label='Divide-and-Conquer Regular (Time)', color='red')
+plt.plot(cities, np.array(dc_highway_time) / (24 * 60), marker='s', linestyle='--', label='Divide-and-Conquer Highway (Time)', color='lightcoral')
+plt.plot(cities, np.array(dp_regular_time) / (24 * 60), marker='o', linestyle='-', label='Dynamic Programming Regular (Time)', color='green')
+plt.plot(cities, np.array(dp_highway_time) / (24 * 60), marker='s', linestyle='--', label='Dynamic Programming Highway (Time)', color='lightgreen')
+
 plt.title('Driving Minimum Time Comparison of Different Algorithms')
 plt.xlabel('Number of Cities')
-plt.ylabel('Total Time (mins)')
+plt.ylabel('Total Time (days)')
 plt.xticks(cities)
 plt.grid(True)
 plt.legend()

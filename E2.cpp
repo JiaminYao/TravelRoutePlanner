@@ -694,10 +694,14 @@ int main() {
     auto processPaths = [&](const vector<PathInfo>& paths, const string& algorithm) {
         for (const auto& path_info : paths) {
             double total_cost = calculateTotalMetric(path_info.path, travel_data, city_names, true, path_info.highway);
-            double total_time = calculateTotalMetric(path_info.path, travel_data, city_names, false, path_info.highway);
+            int total_time = calculateTotalMetric(path_info.path, travel_data, city_names, false, path_info.highway);
+            int days = total_time / (24 * 60);
+            int hours = (total_time % (24 * 60)) / 60;
+            int minutes = total_time % 60;
 
             cout << algorithm << " " << path_info.path_name
-                    << " Total Cost: $" << total_cost << ", Total Time: " << total_time << " mins" << endl;
+                    << " Total Cost: $" << total_cost << ", Total Time: " << total_time << " mins (= " 
+                    << days << " days, " <<  hours << " hours, " << minutes << " mins)" << endl;
 
             cv::Mat img = cv::imread("./Image/Europe.png");
             if (img.empty()) {

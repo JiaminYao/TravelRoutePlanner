@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Data
 cities = [18, 15, 12, 9, 6]
@@ -29,12 +30,12 @@ plt.show()
 
 # Plot Min Time Path
 plt.figure(figsize=(12, 8))
-plt.plot(cities, greedy_time, marker='o', label='Greedy Min Time', color='blue')
-plt.plot(cities, dc_time, marker='o', label='Divide-and-Conquer Min Time', color='red')
-plt.plot(cities, dp_time, marker='o', label='Dynamic Programming Min Time', color='green')
+plt.plot(cities, np.array(greedy_time) / (24 * 60), marker='o', label='Greedy Min Time', color='blue')
+plt.plot(cities, np.array(dc_time) / (24 * 60), marker='o', label='Divide-and-Conquer Min Time', color='red')
+plt.plot(cities, np.array(dp_time) / (24 * 60), marker='o', label='Dynamic Programming Min Time', color='green')
 plt.title('Flight Minimum Time Path Comparison of Different Algorithms')
 plt.xlabel('Number of Cities')
-plt.ylabel('Total Time (mins)')
+plt.ylabel('Total Time (days)')
 plt.xticks(cities)
 plt.grid(True)
 plt.legend()

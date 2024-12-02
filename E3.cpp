@@ -620,24 +620,24 @@ int main() {
 
     // Calculate metrics for Greedy paths
     double total_cost_greedy_cost_path = calculateTotalMetric(min_cost_path_greedy, flight_data, city_names, true);
-    double total_time_greedy_cost_path = calculateTotalMetric(min_cost_path_greedy, flight_data, city_names, false);
+    int total_time_greedy_cost_path = calculateTotalMetric(min_cost_path_greedy, flight_data, city_names, false);
 
     double total_cost_greedy_time_path = calculateTotalMetric(min_time_path_greedy, flight_data, city_names, true);
-    double total_time_greedy_time_path = calculateTotalMetric(min_time_path_greedy, flight_data, city_names, false);
+    int total_time_greedy_time_path = calculateTotalMetric(min_time_path_greedy, flight_data, city_names, false);
 
     // Calculate metrics for Divide and Conquer paths
     double total_cost_dc_cost_path = calculateTotalMetric(min_cost_path_dc, flight_data, city_names, true);
-    double total_time_dc_cost_path = calculateTotalMetric(min_cost_path_dc, flight_data, city_names, false);
+    int total_time_dc_cost_path = calculateTotalMetric(min_cost_path_dc, flight_data, city_names, false);
 
     double total_cost_dc_time_path = calculateTotalMetric(min_time_path_dc, flight_data, city_names, true);
-    double total_time_dc_time_path = calculateTotalMetric(min_time_path_dc, flight_data, city_names, false);
+    int total_time_dc_time_path = calculateTotalMetric(min_time_path_dc, flight_data, city_names, false);
 
     // Calculate metrics for Dynamic Programming paths
     double total_cost_dp_cost_path = calculateTotalMetric(min_cost_path_dp, flight_data, city_names, true);
-    double total_time_dp_cost_path = calculateTotalMetric(min_cost_path_dp, flight_data, city_names, false);
+    int total_time_dp_cost_path = calculateTotalMetric(min_cost_path_dp, flight_data, city_names, false);
 
     double total_cost_dp_time_path = calculateTotalMetric(min_time_path_dp, flight_data, city_names, true);
-    double total_time_dp_time_path = calculateTotalMetric(min_time_path_dp, flight_data, city_names, false);
+    int total_time_dp_time_path = calculateTotalMetric(min_time_path_dp, flight_data, city_names, false);
 
     // Draw and save paths for Greedy
     drawFlightGreedyPath(base_img, city_coords, min_cost_path_greedy, "./Image/E3Flight_Greedy_MinCost_Path.png");
@@ -663,14 +663,38 @@ int main() {
     writeCityOrderToCSV("./Table/E3Flight_DP_MinCost_Path.csv", min_cost_path_dp, city_names, city_coords, total_cost_dp_cost_path, total_time_dp_cost_path);
     writeCityOrderToCSV("./Table/E3Flight_DP_MinTime_Path.csv", min_time_path_dp, city_names, city_coords, total_cost_dp_time_path, total_time_dp_time_path);
 
-    cout << "Greedy Min Cost Path: Total Cost: $" << total_cost_greedy_cost_path << ", Total Time: " << total_time_greedy_cost_path << " mins" << endl;
-    cout << "Greedy Min Time Path: Total Cost: $" << total_cost_greedy_time_path << ", Total Time: " << total_time_greedy_time_path << " mins" << endl;
+    int greedyCostDays = total_time_greedy_cost_path / (24 * 60);
+    int greedyCostHours = (total_time_greedy_cost_path % (24 * 60)) / 60;
+    int greedyCostMinutes = total_time_greedy_cost_path % 60;
+    int greedyTimeDays = total_time_greedy_time_path / (24 * 60);
+    int greedyTimeHours = (total_time_greedy_time_path % (24 * 60)) / 60;
+    int greedyTimeMinutes = total_time_greedy_time_path % 60;
+    cout << "Greedy Min Cost Path: Total Cost: $" << total_cost_greedy_cost_path << ", Total Time: " << total_time_greedy_cost_path << " mins (= "
+            << greedyCostDays << " days, " << greedyCostHours << " hours, " << greedyCostMinutes << " mins)" << endl;
+    cout << "Greedy Min Time Path: Total Cost: $" << total_cost_greedy_time_path << ", Total Time: " << total_time_greedy_time_path << " mins (= "
+            << greedyTimeDays << " days, " << greedyTimeHours << " hours, " << greedyTimeMinutes << " mins)" << endl;
 
-    cout << "DC Min Cost Path: Total Cost: $" << total_cost_dc_cost_path << ", Total Time: " << total_time_dc_cost_path << " mins" << endl;
-    cout << "DC Min Time Path: Total Cost: $" << total_cost_dc_time_path << ", Total Time: " << total_time_dc_time_path << " mins" << endl;
+    int DCCostDays = total_time_dc_cost_path / (24 * 60);
+    int DCCostours = (total_time_dc_cost_path % (24 * 60)) / 60;
+    int DCCostMinutes = total_time_dc_cost_path % 60;
+    int DCTimeDays = total_time_dc_time_path / (24 * 60);
+    int DCTimeours = (total_time_dc_time_path % (24 * 60)) / 60;
+    int DCTimeMinutes = total_time_dc_time_path % 60;
+    cout << "DC Min Cost Path: Total Cost: $" << total_cost_dc_cost_path << ", Total Time: " << total_time_dc_cost_path << " mins (= "
+            << DCCostDays << " days, " << DCCostours << " hours, " << DCCostMinutes << " mins)" << endl;
+    cout << "DC Min Time Path: Total Cost: $" << total_cost_dc_time_path << ", Total Time: " << total_time_dc_time_path << " mins (= "
+            << DCTimeDays << " days, " << DCTimeours << " hours, " << DCTimeMinutes << " mins)" << endl;
 
-    cout << "DP Min Cost Path: Total Cost: $" << total_cost_dp_cost_path << ", Total Time: " << total_time_dp_cost_path << " mins" << endl;
-    cout << "DP Min Time Path: Total Cost: $" << total_cost_dp_time_path << ", Total Time: " << total_time_dp_time_path << " mins" << endl;
+    int DPCostDays = total_time_dp_cost_path / (24 * 60);
+    int DPCostours = (total_time_dp_cost_path % (24 * 60)) / 60;
+    int DPCostMinutes = total_time_dp_cost_path % 60;
+    int DPTimeDays = total_time_dp_time_path / (24 * 60);
+    int DPTimeours = (total_time_dp_time_path % (24 * 60)) / 60;
+    int DPTimeMinutes = total_time_dp_time_path % 60;
+    cout << "DP Min Cost Path: Total Cost: $" << total_cost_dp_cost_path << ", Total Time: " << total_time_dp_cost_path <<" mins (= "
+            << DPCostDays << " days, " << DPCostours << " hours, " << DPCostMinutes << " mins)" << endl;
+    cout << "DP Min Time Path: Total Cost: $" << total_cost_dp_time_path << ", Total Time: " << total_time_dp_time_path << " mins (= "
+            << DPTimeDays << " days, " << DPTimeours << " hours, " << DPTimeMinutes << " mins)" << endl;
 
     // Open the saved images using the system's default image viewer
 #ifdef _WIN32
